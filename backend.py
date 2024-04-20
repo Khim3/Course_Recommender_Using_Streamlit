@@ -59,9 +59,13 @@ def load_user_profiles():
 
 
 def get_model_index(model_name):
+    index = None
     for i in range(len(models)):
-        if models[i] == model_name:
-            return i
+        if model_name ==models[i]:
+            index = i
+            break
+    return index
+        
 
 
 def add_new_ratings(new_courses):
@@ -589,7 +593,7 @@ def predict(model_name, user_ids, params, training_artifacts):
     score_threshold = -1
     score_description = ''
     try:
-        assert 'model_name' in training_artifacts
+        assert "model_name" in training_artifacts
     except AssertionError as error:
         raise (error)
     for user_id in user_ids:
