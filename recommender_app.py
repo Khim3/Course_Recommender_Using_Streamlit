@@ -104,7 +104,6 @@ def train(model_name, params):
         raise e
 def predict(model_name, params, training_artifacts):
     res = None
-    # Start making predictions based on model name, test user ids, and parameters
     try:
         assert model_name in backend.models
         model_index = backend.get_model_index(model_selection)
@@ -125,7 +124,7 @@ def predict(model_name, params, training_artifacts):
                 user_ids = [new_id]
                 res, descr = backend.predict(model_name, user_ids, params, training_artifacts)
             st.success('Recommendations generated!')
-            st.write(f"**{backend.MODELS[model_index][3:]}**: {backend.MODEL_DESCRIPTIONS[model_index]}")          
+            st.write(f"**{backend.models[model_index][3:]}**: {backend.MODEL_DESCRIPTIONS[model_index]}")          
             st.write(descr)
         else:
             st.write("Sorry, the Neural Networks model is not active at the moment\
@@ -235,7 +234,7 @@ if prediction_button and selected_courses_df.shape[0] > 0:
     # who has selected the courses in the UI
     new_id = backend.add_new_ratings(selected_courses_df['COURSE_ID'].values)
     params["new_id"] = new_id
-    
+
     if new_id:
         res_df = predict(model_selection, params, training_artifacts)
         res_df = res_df[['COURSE_ID', 'SCORE']]

@@ -30,6 +30,44 @@ models = ('1. Course Similarity',
 
 RANDOM_SEED = 42
 NUM_GENRES = 14
+MODEL_DESCRIPTIONS = (
+    "Course similarities are built from course text descriptions using Bags-of-Words (BoW). \
+        A similarity value is the projection of a course descriptor vector in the form of a BoW \
+        on another, i.e., the cosine similarity between both. Given the selected courses, \
+        the set of courses with the highest similarity value are found.",
+    "Courses have a genre descriptor vector which encodes all the topics covered by them. \
+        User profiles can be built by summing the user course descriptors scaled by the ratings \
+        given by the user. Then, for a target user profile, the unselected courses that are \
+        most aligned with it can be found using the cosine similarity (i.e., dot product) \
+        between the profile and the courses. Finally, the courses with the highest scores are provided.",
+    "Courses have a genre descriptor vector which encodes all the topics covered by them. \
+        User profiles can be built by summing the user course descriptors scaled by the ratings \
+        given by the users. Then, those users can be clustered according to their profile. \
+        This approach provides with the courses most popular within the user cluster.",
+    "This approach is the same as the simple clustering approach, but the user profile descriptors \
+        are transformed to their principal components and only a subset of them is taken, \
+        enough to cover a percentage of the total variance, selected by the user.",
+    "Given the ratings dataframe, course columns are treated as course descriptors, i.e., \
+        each course is defined by all the ratings provided by the users. With that, a \
+        course similarity matrix is built using the cosine similarity. Then, for the set of \
+        selected courses, the most similar ones are suggested.",
+    "Non-Negative Matrix Factorization is performed: given the ratings dataset which contains \
+        the rating of each user for each course (sparse notation), the matrix is factorized \
+        as the multiplication of two lower rank matrices. That lower rank is the size of \
+        a latent space which represents discovered inherent features). With the factorization, \
+        the ratings of unselected courses are predicted by multiplying the lower rank matrices, \
+        which yields the approximate but complete user-course rating table.",
+    "An Artificial Neural Network (ANN) which maps users and courses to ratings is defined and trained. \
+        If the user is in the training set, the ratings for unselected courses can be predicted. \
+        However, the most interesting part of this approach consists in extracting the user and course \
+        embeddings from the ANN for later use. An embedding vector is a continuous N-dimensional \
+        representation of a discrete object (e.g., a user).",
+    "The user and item embeddings extracted from the ANN are used to build a linear regression model \
+        which predicts the rating given the embedding of a user and a course.",
+    "The user and item embeddings extracted from the ANN are used to build a random forest \
+        classification model which predicts the rating given the embedding of a user and a course."
+)
+
 
 
 def load_ratings():
@@ -54,7 +92,7 @@ def load_course_genres():
     return pd.read_csv('course_genres.csv')
 
 
-def load_user_profiles():
+def load_user_profiles(get_df=True):
     return pd.read_csv('user_profiles.csv')
 
 
@@ -100,6 +138,7 @@ class RecommenderNet(keras.Model):
         self.num_users = num_users
         self.num_items = num_items
         self.embedding_size = embedding_size
+        
         self.user_embedding = layers.Embedding(
             input_dim=num_users,
             output_dim=embedding_size,
@@ -111,19 +150,21 @@ class RecommenderNet(keras.Model):
             input_dim=num_users,
             output_dim=1,
             name='user_bias',)
+        
         self.item_embedding_layer = layers.Embedding(
             input_dim=num_items,
             output_dim=embedding_size,
             name='item_embedding_layer',
             embeddings_initializer='he_normal',
             embeddings_regularizer=keras.regularizers.l2(1e-6),)
+        
         self.item_bias = layers.Embedding(
             input_dim=num_items,
             output_dim=1,
             name='item_bias',)
 
     def call(self, inputs):
-        user_vector = self.user_embedding(inputs[:, 0])
+        user_vector = self.user_embedding_layer(inputs[:, 0])
         user_bias = self.user_bias(inputs[:, 0])
         item_vector = self.item_embedding_layer(inputs[:, 1])
         item_bias = self.item_bias(inputs[:, 1])
@@ -134,6 +175,7 @@ class RecommenderNet(keras.Model):
 
 def encode_ratings(raw_data):
     encoded_data = raw_data.copy()
+    
     user_list = encoded_data['user'].unique().tolist()
     user_id2idx_dict = {x: i for i, x in enumerate(user_list)}
     user_idx2id_dict = {i: x for i, x in enumerate(user_list)}
@@ -578,6 +620,7 @@ def train(model_name, params):
             test_size=0.1,  # portion of dataset to allocate to test set
             random_state=RANDOM_SEED  # we are setting the seed here, ALWAYS DO IT!
         )
+    return training_artifacts
 
 
 def predict(model_name, user_ids, params, training_artifacts):
@@ -698,6 +741,7 @@ def predict(model_name, user_ids, params, training_artifacts):
             res = training_artifacts['result']
             score_description = "Note: the score is the rating predicted\
                 by the neural network model."
+                
     # filter the results
     for key, score in res.items():
         if score >= score_threshold:
